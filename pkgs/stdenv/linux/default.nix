@@ -15,7 +15,7 @@
       armv6l-linux = import ./bootstrap-files/armv6l.nix;
       armv7l-linux = import ./bootstrap-files/armv7l.nix;
       aarch64-linux = import ./bootstrap-files/aarch64.nix;
-      mipsel-linux = import ./bootstrap-files/loongson2f.nix;
+      mipsel-linux = import ./bootstrap-files/mipsel.nix;
       mips64el-linux = import ./bootstrap-files/mips64el.nix;
       powerpc64le-linux = import ./bootstrap-files/powerpc64le.nix;
       riscv64-linux = import ./bootstrap-files/riscv64.nix;
