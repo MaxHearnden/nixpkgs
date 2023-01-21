@@ -96,6 +96,15 @@ in {
           See {option}`rebootWindow` for configuring the times at which a reboot is allowed.
         '';
       };
+      
+      delayReboot = mkOption {
+        default = false;
+        type = types.bool;
+        description = lib.mkDoc ''
+          If the update would have caused the system to reboot but is currently outside of
+          the reboot window, schedule a reboot for the start of the next reboot window.
+        '';
+      };
 
       randomizedDelaySec = mkOption {
         default = "0";
@@ -235,7 +244,9 @@ in {
           ${nixos-rebuild} ${cfg.operation} ${toString cfg.flags}
         ${optionalString (cfg.rebootWindow != null) ''
           elif [ "''${do_reboot}" != true ]; then
-            echo "Outside of configured reboot window, skipping."
+            ${if cfg.delayReboot then
+                "${shutdown} -r lower"
+              else "echo \"Outside of configured reboot window, skipping.\""}
         ''}
         else
           ${shutdown} -r +1
