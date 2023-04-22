@@ -38825,7 +38825,7 @@ with pkgs;
 
   nix-script = callPackage ../tools/nix/nix-script { };
 
-  nix-template-rpm = callPackage ../build-support/templaterpm { inherit (python2Packages) python toposort; };
+  nix-template-rpm = callPackage ../build-support/templaterpm { inherit (python3Packages) python toposort; };
 
   nix-top = callPackage ../tools/package-management/nix-top { };
 

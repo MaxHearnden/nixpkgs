@@ -7,7 +7,7 @@ import argparse
 import re
 import shutil
 import rpm
-import urlparse
+import urllib.parse
 import traceback
 import toposort
 
@@ -59,7 +59,7 @@ class SPECTemplate(object):
   def rewriteCommands(self, string):
     string = string.replace('SPACER_DIR_FOR_REMOVAL/','')
     string = string.replace('SPACER_DIR_FOR_REMOVAL','')
-    string = '\n'.join(map(lambda line: ' '.join(map(lambda x: x.replace('SOURCE_DIR_SPACER/',('${./' if (self.buildRootInclude is None) else '${buildRoot}/usr/share/buildroot/SOURCES/'))+('}' if (self.buildRootInclude is None) else '') if x.startswith('SOURCE_DIR_SPACER/') else x, line.split(' '))), string.split('\n')))
+    string = '\n'.join([' '.join([x.replace('SOURCE_DIR_SPACER/',('${./' if (self.buildRootInclude is None) else '${buildRoot}/usr/share/buildroot/SOURCES/'))+('}' if (self.buildRootInclude is None) else '') if x.startswith('SOURCE_DIR_SPACER/') else x for x in line.split(' ')]) for line in string.split('\n')])
     string = string.replace('\n','\n    ')
     string = string.rstrip()
     return string
@@ -67,18 +67,18 @@ class SPECTemplate(object):
 
   def rewriteName(self, string):
     parts = string.split('-')
-    parts = filter(lambda x: not x == "devel", parts)
-    parts = filter(lambda x: not x == "doc", parts)
+    parts = [x for x in parts if not x == "devel"]
+    parts = [x for x in parts if not x == "doc"]
     if len(parts) > 1 and parts[0] in self.packageGroups:
-      return parts[0] + '-' + ''.join(parts[1:2] + map(lambda x: x.capitalize(), parts[2:]))
+      return parts[0] + '-' + ''.join(parts[1:2] + [x.capitalize() for x in parts[2:]])
     else:
-      return ''.join(parts[:1] + map(lambda x: x.capitalize(), parts[1:]))
+      return ''.join(parts[:1] + [x.capitalize() for x in parts[1:]])
 
 
   def rewriteInputs(self,target,inputs):
-    camelcase = lambda l: l[:1] + map(lambda x: x.capitalize(), l[1:])
-    filterDevel = lambda l: filter(lambda x: not x == "devel", l)
-    filterDoc = lambda l: filter(lambda x: not x == "doc", l)
+    camelcase = lambda l: l[:1] + [x.capitalize() for x in l[1:]]
+    filterDevel = lambda l: [x for x in l if not x == "devel"]
+    filterDoc = lambda l: [x for x in l if not x == "doc"]
     rewrite = lambda l: ''.join(camelcase(filterDoc(filterDevel(l))))
 
     def filterPackageGroup(target):
@@ -112,7 +112,7 @@ class SPECTemplate(object):
   def getBuildInputs(self,target=None):
     inputs = self.rewriteInputs(target,self.spec.sourceHeader['requires'])
     if self.translateTable is not None:
-      return map(lambda x: self.translateTable.name(x), inputs)
+      return [self.translateTable.name(x) for x in inputs]
     else:
       return inputs
 
@@ -140,7 +140,7 @@ class SPECTemplate(object):
 
 
   def copySources(self, input_dir, output_dir):
-    filenames = [source for (source, _, flag) in self.spec.sources if flag==1 if not urlparse.urlparse(source).scheme in ["http", "https"] ]
+    filenames = [source for (source, _, flag) in self.spec.sources if flag==1 if not urllib.parse.urlparse(source).scheme in ["http", "https"] ]
     for filename in filenames:
       shutil.copyfile(os.path.join(input_dir, filename), os.path.join(output_dir, filename))
 
@@ -152,7 +152,7 @@ class SPECTemplate(object):
 
     facts["url"] = []
     facts["sha256"] = []
-    sources = [source for (source, _, flag) in self.spec.sources if flag==1 if urlparse.urlparse(source).scheme in ["http", "https"] ]
+    sources = [source for (source, _, flag) in self.spec.sources if flag==1 if urllib.parse.urlparse(source).scheme in ["http", "https"] ]
     for url in sources:
       p = subprocess.Popen(['nix-prefetch-url', url], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       output, err = p.communicate()
@@ -162,9 +162,9 @@ class SPECTemplate(object):
 
     patches = [source for (source, _, flag) in self.spec.sources if flag==2]
     if self.buildRootInclude is None:
-      facts["patches"] = map(lambda x: './'+x, patches)
+      facts["patches"] = ['./'+x for x in patches]
     else:
-      facts["patches"] = map(lambda x: '"${buildRoot}/usr/share/buildroot/SOURCES/'+x+'"', reversed(patches))
+      facts["patches"] = ['"${buildRoot}/usr/share/buildroot/SOURCES/'+x+'"' for x in reversed(patches)]
 
     return facts
 
@@ -178,7 +178,7 @@ class SPECTemplate(object):
 
   @property
   def src(self):
-    sources = [source for (source, _, flag) in self.spec.sources if flag==1 if urlparse.urlparse(source).scheme in ["http", "https"] ]
+    sources = [source for (source, _, flag) in self.spec.sources if flag==1 if urllib.parse.urlparse(source).scheme in ["http", "https"] ]
     out = ''
     for (url,sha256) in zip(self.facts['url'],self.facts['sha256']):
       out += '  src = fetchurl {\n'
@@ -355,7 +355,7 @@ class NixTemplate(object):
     nixTemplateFile = open(os.path.normpath(self.nixfile),'r')
     nixOutFile = open(os.path.normpath(nixOut),'w')
     for (n,line) in enumerate(nixTemplateFile):
-      if self.matchedLines.has_key(n) and self.update[self.matchedLines[n]] is not None:
+      if n in self.matchedLines and self.update[self.matchedLines[n]] is not None:
         nixOutFile.write(line.replace(self.original[self.matchedLines[n]], self.update[self.matchedLines[n]], 1))
       else:
         nixOutFile.write(line)
@@ -364,15 +364,15 @@ class NixTemplate(object):
 
 
   def loadUpdate(self,orig):
-    if orig.has_key("name") and orig.has_key("version"):
+    if "name" in orig and "version" in orig:
       self.update["name"] = orig["name"] + '-' + orig["version"]
       self.update["version"] = orig["version"]
-    if orig.has_key("url") and orig.has_key("sha256") and len(orig["url"])>0:
+    if "url" in orig and "sha256" in orig and len(orig["url"])>0:
       self.update["url"] = orig["url"][0]
       self.update["sha256"] = orig["sha256"][0]
       for url in orig["url"][1:-1]:
         sys.stderr.write("WARNING: URL has been dropped: %s\n" % url)
-    if orig.has_key("patches"):
+    if "patches" in orig:
       self.update["patches"] = '[ ' + ' '.join(orig['patches']) + ' ]'
 
 
@@ -391,34 +391,34 @@ class TranslationTable(object):
       for line in infile:
         match = re.match(r'^(.+?)\s+(.+?)\s+(.+?)\s*$', line)
         if match is not None:
-          if not self.tablePath.has_key(match.group(1)):
+          if match.group(1) not in self.tablePath:
             self.tablePath[match.group(1)] = match.group(2)
-          if not self.tableName.has_key(match.group(1)):
+          if match.group(1) not in self.tableName:
             self.tableName[match.group(1)] = match.group(3)
         else:
           match = re.match(r'^(.+?)\s+(.+?)\s*$', line)
-          if not self.tablePath.has_key(match.group(1)):
+          if match.group(1) not in self.tablePath:
             self.tablePath[match.group(1)] = match.group(2)
 
   def writeTable(self, tableFile):
     outFile = open(os.path.normpath(tableFile),'w')
-    keys = self.tablePath.keys()
+    keys = list(self.tablePath.keys())
     keys.sort()
     for k in keys:
-      if self.tableName.has_key(k):
+      if k in self.tableName:
         outFile.write( k + " " + self.tablePath[k] + " " + self.tableName[k] + "\n" )
       else:
         outFile.write( k + " " + self.tablePath[k] + "\n" )
     outFile.close()
 
   def name(self, key):
-   if self.tableName.has_key(key):
+   if key in self.tableName:
      return self.tableName[key]
    else:
      return key
 
   def path(self, key, orig):
-   if self.tablePath.has_key(key):
+   if key in self.tablePath:
      return self.tablePath[key]
    else:
      return orig
@@ -483,7 +483,7 @@ if __name__ == "__main__":
         newTable.update(spec.key,spec.relOutputDir,spec.getSelf())
         nameMap[spec.getSelf()] = spec
 
-      except Exception, e:
+      except Exception as e:
         sys.stderr.write("ERROR: %s failed with:\n%s\n%s\n" % (specPath,e.message,traceback.format_exc()))
 
     if args.translateOut is not None:
@@ -492,14 +492,14 @@ if __name__ == "__main__":
       newTable.writeTable(args.translateOut)
 
     graph = {}
-    for k, v in nameMap.items():
+    for k, v in list(nameMap.items()):
       graph[k] = set(v.getBuildInputs("ALL"))
 
     sortedSpecs = toposort.toposort_flatten(graph)
-    sortedSpecs = filter( lambda x: x in nameMap.keys(), sortedSpecs)
+    sortedSpecs = [x for x in sortedSpecs if x in list(nameMap.keys())]
 
     allPackagesFile = open(os.path.normpath( args.allPackages ), 'w')
-    allPackagesFile.write( '\n\n'.join(map(lambda x: x.callPackage(), map(lambda x: nameMap[x], sortedSpecs))) )
+    allPackagesFile.write( '\n\n'.join([x.callPackage() for x in [nameMap[x] for x in sortedSpecs]]) )
     allPackagesFile.close()
 
     if args.buildRoot is not None:
@@ -508,7 +508,7 @@ if __name__ == "__main__":
         os.makedirs(os.path.dirname(buildRootFilename))
       buildRootFile = open(buildRootFilename, 'w')
       buildRootFile.write( "{ fetchurl, buildRoot }: {\n\n" )
-      keys = buildRootContent.keys()
+      keys = list(buildRootContent.keys())
       keys.sort()
       for k in keys:
         buildRootFile.write( buildRootContent[k] + '\n' )
