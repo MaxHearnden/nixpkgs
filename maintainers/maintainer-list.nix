@@ -132,7 +132,7 @@
   };
   _360ied = {
     name = "Brian Zhu";
-    email = "therealbarryplayer@gmail.com";
+    email = "therealbarryplayer@gmai/l.com";
     github = "360ied";
     githubId = 19516527;
   };
@@ -12860,6 +12860,12 @@
     github = "RaghavSood";
     githubId = 903072;
     name = "Raghav Sood";
+  };
+  ragingpastry = {
+    email = "senior.crepe@gmail.com";
+    github = "ragingpastry";
+    githubId = 6778250;
+    name = "Nick Wilburn";
   };
   raitobezarius = {
     email = "ryan@lahfa.xyz";
