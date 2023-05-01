@@ -132,7 +132,7 @@
   };
   _360ied = {
     name = "Brian Zhu";
-    email = "therealbarryplayer@gmai/l.com";
+    email = "therealbarryplayer@gmail.com";
     github = "360ied";
     githubId = 19516527;
   };
