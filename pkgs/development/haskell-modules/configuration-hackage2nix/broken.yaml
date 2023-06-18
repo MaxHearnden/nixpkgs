@@ -1783,7 +1783,6 @@ broken-packages:
   - gi-cogl
   - Gifcurry
   - gi-gio-hs-list-model
-  - gi-graphene
   - gi-gsttag
   - gi-gtk-declarative
   - gi-gtk-layer-shell

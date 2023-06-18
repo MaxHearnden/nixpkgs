@@ -2620,4 +2620,9 @@ self: super: {
     url = "https://github.com/vincenthz/hs-gauge/commit/3d7776f41187c70c4f0b4517e6a7dde10dc02309.patch";
     hash = "sha256-4osUMo0cvTvyDTXF8lY9tQbFqLywRwsc3RkHIhqSriQ=";
   }) super.gauge;
+
+  # correctly set graphene
+  gi-graphene = super.gi-graphene.override {
+    graphene-gobject = pkgs.graphene;
+  };
 } // import ./configuration-tensorflow.nix {inherit pkgs haskellLib;} self super
