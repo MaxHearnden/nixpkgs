@@ -78,6 +78,8 @@ let
       isModular = config.isYes "MODULES";
       withRust = config.isYes "RUST";
 
+      isUml = config.isYes "UML";
+
       buildDTBs = kernelConf.DTB or false;
 
       # Dependencies that are required to build kernel modules
@@ -96,7 +98,7 @@ let
       passthru = rec {
         inherit version modDirVersion config kernelPatches configfile
           moduleBuildDependencies stdenv;
-        inherit isZen isHardened isLibre withRust;
+        inherit isZen isHardened isLibre withRust isUml;
         isXen = lib.warn "The isXen attribute is deprecated. All Nixpkgs kernels that support it now have Xen enabled." true;
         baseVersion = lib.head (lib.splitString "-rc" version);
         kernelOlder = lib.versionOlder baseVersion;
@@ -114,6 +116,22 @@ let
                           ++ optionals withRust [ rustc rust-bindgen ];
 
       RUST_LIB_SRC = lib.optionalString withRust rustPlatform.rustLibSrc;
+
+      # Absolute paths for compilers avoid any PATH-clobbering issues.
+      makeFlags = [
+        "O=$(buildRoot)"
+        "CC=${stdenv.cc}/bin/${stdenv.cc.targetPrefix}cc"
+        "HOSTCC=${buildPackages.stdenv.cc}/bin/${buildPackages.stdenv.cc.targetPrefix}cc"
+        "HOSTLD=${buildPackages.stdenv.cc.bintools}/bin/${buildPackages.stdenv.cc.targetPrefix}ld"
+      ] ++ lib.optional (!isUml)
+        "ARCH=${stdenv.hostPlatform.linuxArch}"
+      ++ lib.optionals (isUml) [
+        "ARCH=um"
+        "SUBARCH=${stdenv.hostPlatform.linuxArch}"
+      ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
+        "CROSS_COMPILE=${stdenv.cc.targetPrefix}"
+      ] ++ (stdenv.hostPlatform.linux-kernel.makeFlags or [])
+        ++ extraMakeFlags;
 
       patches =
         map (p: p.patch) kernelPatches
@@ -379,18 +397,6 @@ stdenv.mkDerivation ((drvAttrs config stdenv.hostPlatform.linux-kernel kernelPat
   enableParallelBuilding = true;
 
   hardeningDisable = [ "bindnow" "format" "fortify" "stackprotector" "pic" "pie" ];
-
-  # Absolute paths for compilers avoid any PATH-clobbering issues.
-  makeFlags = [
-    "O=$(buildRoot)"
-    "CC=${stdenv.cc}/bin/${stdenv.cc.targetPrefix}cc"
-    "HOSTCC=${buildPackages.stdenv.cc}/bin/${buildPackages.stdenv.cc.targetPrefix}cc"
-    "HOSTLD=${buildPackages.stdenv.cc.bintools}/bin/${buildPackages.stdenv.cc.targetPrefix}ld"
-    "ARCH=${stdenv.hostPlatform.linuxArch}"
-  ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
-    "CROSS_COMPILE=${stdenv.cc.targetPrefix}"
-  ] ++ (stdenv.hostPlatform.linux-kernel.makeFlags or [])
-    ++ extraMakeFlags;
 
   karch = stdenv.hostPlatform.linuxArch;
 } // (optionalAttrs (pos != null) { inherit pos; })))

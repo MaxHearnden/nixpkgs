@@ -543,6 +543,17 @@ rec {
     };
   };
 
+  uml = {
+    linux-kernel = {
+      name = "uml";
+
+      baseConfig = "defconfig";
+      # Build whatever possible as a module, if not stated in the extra config.
+      autoModules = true;
+      target = "vmlinux";
+    };
+  };
+
   # This function takes a minimally-valid "platform" and returns an
   # attrset containing zero or more additional attrs which should be
   # included in the platform in order to further elaborate it.

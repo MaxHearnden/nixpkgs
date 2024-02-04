@@ -1088,6 +1088,9 @@ let
     } // optionalAttrs (versionAtLeast version "5.4" && stdenv.hostPlatform.system == "x86_64-linux") {
       CHROMEOS_LAPTOP = module;
       CHROMEOS_PSTORE = module;
+    } // optionalAttrs (features.uml or false) {
+      UML = yes;
+      UML_NET_VECTOR = yes;
     };
   };
 in
