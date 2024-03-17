@@ -120,8 +120,13 @@ let
 
   withRust = ((configfile.moduleStructuredConfig.settings.RUST or {}).tristate or null) == "y";
 
+  isUml = ((configfile.moduleStructuredConfig.settings.UML or {}).tristate or null) == "y";
+
   configfile = stdenv.mkDerivation {
-    inherit ignoreConfigErrors autoModules preferBuiltin kernelArch extraMakeFlags;
+    inherit autoModules preferBuiltin kernelArch extraMakeFlags;
+    # ignoreConfigErrors is done here as we now know whether the kernel is a
+    # user-mode linux kernel
+    ignoreConfigErrors = ignoreConfigErrors || isUml;
     pname = "linux-config";
     inherit version;
 
@@ -166,7 +171,11 @@ let
       # Get a basic config file for later refinement with $generateConfig.
       make $makeFlags \
           -C . O="$buildRoot" $kernelBaseConfig \
-          ARCH=$kernelArch \
+          ${if isUml then
+              "ARCH=um SUBARCH=$kernelArch SHELL=${stdenv.shell}"
+            else
+              "ARCH=$kernelArch"
+           } \
           HOSTCC=$HOSTCC HOSTCXX=$HOSTCXX HOSTAR=$HOSTAR HOSTLD=$HOSTLD \
           CC=$CC OBJCOPY=$OBJCOPY OBJDUMP=$OBJDUMP READELF=$READELF \
           $makeFlags
