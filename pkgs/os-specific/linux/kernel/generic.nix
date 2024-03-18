@@ -218,7 +218,9 @@ let
     inherit kernelPatches randstructSeed extraMakeFlags extraMeta configfile;
     pos = builtins.unsafeGetAttrPos "version" args;
 
-    config = { CONFIG_MODULES = "y"; CONFIG_FW_LOADER = "m"; } // lib.optionalAttrs withRust { CONFIG_RUST = "y"; };
+    config = { CONFIG_MODULES = "y"; CONFIG_FW_LOADER = "m"; }
+      // lib.optionalAttrs withRust { CONFIG_RUST = "y"; }
+      // lib.optionalAttrs isUml { CONFIG_UML = "y"; };
   } // lib.optionalAttrs (modDirVersion != null) { inherit modDirVersion; });
 
 in

@@ -128,6 +128,7 @@ let
       ++ lib.optionals (isUml) [
         "ARCH=um"
         "SUBARCH=${stdenv.hostPlatform.linuxArch}"
+        "SHELL=${stdenv.shell}"
       ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
         "CROSS_COMPILE=${stdenv.cc.targetPrefix}"
       ] ++ (stdenv.hostPlatform.linux-kernel.makeFlags or [])
