@@ -42,6 +42,9 @@ let
     '';
     (forceRust || defaultRust) && kernelSupportsRust;
 
+  # Compile with ARCH=um
+  isUML = features.uml or false;
+
   options = {
 
     debug = {
@@ -1337,6 +1340,19 @@ let
     accel = {
       # Build DRM accelerator devices
       DRM_ACCEL = whenAtLeast "6.2" yes;
+    };
+
+    uml = lib.optionalAttrs isUML {
+      UML = yes;
+      # Allow vector (multi-message) network interfaces
+      UML_NET_VECTOR = yes;
+
+      # UML doesn't use drivers that set CONFIG_INPUT=y however other options
+      # (e.g. RC_CORE = yes requires this)
+      INPUT = yes;
+
+      # Don't inlude /lib and /lib64 in the RPATH for linux as recommened for nix
+      LD_SCRIPT_DYN_RPATH = no;
     };
   };
 in

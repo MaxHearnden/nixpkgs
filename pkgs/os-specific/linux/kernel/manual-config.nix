@@ -113,6 +113,7 @@ let
 
       isModular = config.isYes "MODULES";
       withRust = config.isYes "RUST";
+      isUML = config.isYes "UML";
 
       buildDTBs = kernelConf.DTB or false;
 
@@ -132,7 +133,7 @@ let
       passthru = rec {
         inherit version modDirVersion config kernelPatches configfile
           moduleBuildDependencies stdenv;
-        inherit isZen isHardened isLibre withRust;
+        inherit isZen isHardened isLibre withRust isUML;
         isXen = lib.warn "The isXen attribute is deprecated. All Nixpkgs kernels that support it now have Xen enabled." true;
         baseVersion = lib.head (lib.splitString "-rc" version);
         kernelOlder = lib.versionOlder baseVersion;
@@ -183,6 +184,24 @@ let
             url = "https://git.kernel.org/pub/scm/linux/kernel/git/powerpc/linux.git/patch/?id=d9e5c3e9e75162f845880535957b7fd0b4637d23";
             hash = "sha256-bBOyJcP6jUvozFJU0SPTOf3cmnTQ6ZZ4PlHjiniHXLU=";
           });
+
+      # Absolute paths for compilers avoid any PATH-clobbering issues.
+      makeFlags = [
+        "O=$(buildRoot)"
+        "CC=${stdenv.cc}/bin/${stdenv.cc.targetPrefix}cc"
+        "HOSTCC=${buildPackages.stdenv.cc}/bin/${buildPackages.stdenv.cc.targetPrefix}cc"
+        "HOSTLD=${buildPackages.stdenv.cc.bintools}/bin/${buildPackages.stdenv.cc.targetPrefix}ld"
+      ] ++ lib.optionals (!isUML) [
+        "ARCH=${stdenv.hostPlatform.linuxArch}"
+      ] ++ lib.optionals isUML [
+        "ARCH=um"
+        "SUBARCH=${stdenv.hostPlatform.linuxArch}"
+        "SHELL=${stdenv.shell}"
+        "BINDGEN_TARGET=x86_64-linux-gnu"
+      ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
+        "CROSS_COMPILE=${stdenv.cc.targetPrefix}"
+      ] ++ (stdenv.hostPlatform.linux-kernel.makeFlags or [])
+        ++ extraMakeFlags;
 
       postPatch = ''
         # Ensure that depmod gets resolved through PATH
@@ -250,7 +269,8 @@ let
 
       buildFlags = [
         "KBUILD_BUILD_VERSION=1-NixOS"
-        kernelConf.target
+      ] ++ lib.optional (!isUML) kernelConf.target
+        ++ [
         "vmlinux"  # for "perf" and things like that
       ] ++ optional isModular "modules"
         ++ optionals buildDTBs ["dtbs" "DTC_FLAGS=-@"]
@@ -315,6 +335,11 @@ let
       in ''
         installFlagsArray+=("-j$NIX_BUILD_CORES")
         export HOME=${installkernel}
+      '' + lib.optionalString isUML ''
+        # Add an install target for uml
+        echo "PHONY += install" >> ../arch/um/Makefile
+        echo "install:" >> ../arch/um/Makefile
+        printf "\t\$(call cmd,install)" >> ../arch/um/Makefile
       '';
 
       # Some image types need special install targets (e.g. uImage is installed with make uinstall on arm)
@@ -429,18 +454,6 @@ stdenv.mkDerivation ((drvAttrs config stdenv.hostPlatform.linux-kernel kernelPat
   enableParallelBuilding = true;
 
   hardeningDisable = [ "bindnow" "format" "fortify" "stackprotector" "pic" "pie" ];
-
-  # Absolute paths for compilers avoid any PATH-clobbering issues.
-  makeFlags = [
-    "O=$(buildRoot)"
-    "CC=${stdenv.cc}/bin/${stdenv.cc.targetPrefix}cc"
-    "HOSTCC=${buildPackages.stdenv.cc}/bin/${buildPackages.stdenv.cc.targetPrefix}cc"
-    "HOSTLD=${buildPackages.stdenv.cc.bintools}/bin/${buildPackages.stdenv.cc.targetPrefix}ld"
-    "ARCH=${stdenv.hostPlatform.linuxArch}"
-  ] ++ lib.optionals (stdenv.hostPlatform != stdenv.buildPlatform) [
-    "CROSS_COMPILE=${stdenv.cc.targetPrefix}"
-  ] ++ (stdenv.hostPlatform.linux-kernel.makeFlags or [])
-    ++ extraMakeFlags;
 
   karch = stdenv.hostPlatform.linuxArch;
 } // (optionalAttrs (pos != null) { inherit pos; })))

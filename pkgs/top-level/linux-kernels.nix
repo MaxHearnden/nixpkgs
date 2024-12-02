@@ -12,6 +12,7 @@
 , lib
 , fetchurl
 , gcc10Stdenv
+, uml-utilities
 }:
 
 # When adding a kernel:
@@ -59,6 +60,25 @@ let
       ];
       isHardened = true;
   };
+
+  umlKernelFor = kernel': overrides:
+    let
+      kernel = kernel'.override overrides;
+    in kernel.override {
+      pname = "user-mode-linux";
+      ignoreConfigErrors = true;
+
+      kernelPatches = kernel.kernelPatches ++ [
+        {
+          name = "UML";
+          patch = null;
+          features = {
+            efiBootStub = false;
+            uml = true;
+          };
+        }
+      ];
+    };
 in {
   kernelPatches = callPackage ../os-specific/linux/kernel/patches.nix { };
 
@@ -276,6 +296,10 @@ in {
     linux_6_1_hardened = hardenedKernelFor kernels.linux_6_1 { };
     linux_6_6_hardened = hardenedKernelFor kernels.linux_6_6 { };
     linux_6_11_hardened = hardenedKernelFor kernels.linux_6_11 { };
+
+    linux_uml = umlKernelFor packageAliases.linux_default.kernel { };
+
+    linux_latest_uml = umlKernelFor packageAliases.linux_latest.kernel { };
 
   } // lib.optionalAttrs config.allowAliases {
     linux_4_14 = throw "linux 4.14 was removed because it will reach its end of life within 23.11";
@@ -626,6 +650,8 @@ in {
 
   hardenedPackagesFor = kernel: overrides: packagesFor (hardenedKernelFor kernel overrides);
 
+  umlPackagesFor = kernel: overrides: packagesFor (umlKernelFor kernel overrides);
+
   vanillaPackages = {
     # recurse to build modules for the kernels
     linux_5_4 = recurseIntoAttrs (packagesFor kernels.linux_5_4);
@@ -685,6 +711,10 @@ in {
     linux_libre = recurseIntoAttrs (packagesFor kernels.linux_libre);
 
     linux_latest_libre = recurseIntoAttrs (packagesFor kernels.linux_latest_libre);
+
+    linux_uml = recurseIntoAttrs (packagesFor kernels.linux_uml);
+
+    linux_latest_uml = recurseIntoAttrs (packagesFor kernels.linux_latest_uml);
     __recurseIntoDerivationForReleaseJobs = true;
   } // lib.optionalAttrs config.allowAliases {
     linux_4_14_hardened = throw "linux 4.14 was removed because it will reach its end of life within 23.11";

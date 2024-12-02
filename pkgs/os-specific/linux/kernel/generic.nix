@@ -134,6 +134,8 @@ let
 
   withRust = ((configfile.moduleStructuredConfig.settings.RUST or {}).tristate or null) == "y";
 
+  isUML = ((configfile.moduleStructuredConfig.settings.UML or {}).tristate or null) == "y";
+
   configfile = stdenv.mkDerivation {
     inherit ignoreConfigErrors autoModules preferBuiltin kernelArch extraMakeFlags;
     pname = "linux-config";
@@ -157,6 +159,7 @@ let
     kernelBaseConfig = if defconfig != null then defconfig else stdenv.hostPlatform.linux-kernel.baseConfig;
 
     makeFlags = lib.optionals (stdenv.hostPlatform.linux-kernel ? makeFlags) stdenv.hostPlatform.linux-kernel.makeFlags
+      ++ lib.optional isUML [ "ARCH=um" "SUBARCH=${kernelArch}" ]
       ++ extraMakeFlags;
 
     postPatch = kernel.postPatch + ''
@@ -179,7 +182,11 @@ let
       # Get a basic config file for later refinement with $generateConfig.
       make $makeFlags \
           -C . O="$buildRoot" $kernelBaseConfig \
-          ARCH=$kernelArch \
+          ${if isUML then
+            "ARCH=um SUBARCH=$kernelArch SHELL=${stdenv.shell}"
+          else
+            "ARCH=$kernelArch"
+          } \
           HOSTCC=$HOSTCC HOSTCXX=$HOSTCXX HOSTAR=$HOSTAR HOSTLD=$HOSTLD \
           CC=$CC OBJCOPY=$OBJCOPY OBJDUMP=$OBJDUMP READELF=$READELF \
           $makeFlags
@@ -226,6 +233,7 @@ let
       CONFIG_MODULES = "y";
       CONFIG_FW_LOADER = "y";
       CONFIG_RUST = if withRust then "y" else "n";
+      CONFIG_UML = if isUML then "y" else "n";
     };
   });
 
