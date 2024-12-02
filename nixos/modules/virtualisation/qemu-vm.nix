@@ -1245,17 +1245,18 @@ in
 
     virtualisation.fileSystems =
       let
+        isUML = config.boot.kernelPackages.kernel.isUML or false;
         mkSharedDir = tag: share: {
           name = share.target;
           value.device = tag;
           value.fsType = "9p";
           value.neededForBoot = true;
-          value.options = [
+          value.options = if isUML then [share.source] else ([
             "trans=virtio"
             "version=9p2000.L"
             "msize=${toString cfg.msize}"
             "x-systemd.requires=modprobe@9pnet_virtio.service"
-          ] ++ lib.optional (tag == "nix-store") "cache=loose";
+          ] ++ lib.optional (tag == "nix-store") "cache=loose");
         };
       in
       lib.mkMerge [
