@@ -370,7 +370,7 @@ let
 
         # Remove unused arches
         for d in $(cd arch/; ls); do
-          if [ "$d" = "$arch" ]; then continue; fi
+          if [ -e $dev/lib/modules/${modDirVersion}/build/arch/"$d" ]; then continue; fi
           if [ "$arch" = arm64 ] && [ "$d" = arm ]; then continue; fi
           rm -rf arch/$d
         done
@@ -385,7 +385,10 @@ let
         find .  -type f -name '*.lds' -print0 | xargs -0 -r chmod u-w
 
         # Keep root and arch-specific Makefiles
-        chmod u-w Makefile arch/"$arch"/Makefile*
+        chmod u-w Makefile
+        for dir in $arch; do
+          chmod u-w arch/"$dir"/Makefile*
+        done
 
         # Keep whole scripts dir
         chmod u-w -R scripts
